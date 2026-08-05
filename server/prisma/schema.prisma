@@ -1,0 +1,106 @@
+// Schema padrão: SQLite (fallback local, zero setup).
+// Para produção com PostgreSQL, troque o provider abaixo para "postgresql"
+// e aponte DATABASE_URL para sua instância Postgres — o restante do schema
+// é compatível com ambos os provedores. Veja README.md > "Trocando para PostgreSQL".
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Um lead identificado pelo telefone (wa_id) que iniciou contato via WhatsApp.
+model Lead {
+  id             String   @id @default(cuid())
+  phone          String   @unique
+  ctwaClid       String?
+  adSourceId     String?
+  dedupToken     String?
+  isOrganic      Boolean  @default(false)
+  currentStage   String?  // nome da etapa, só para exibição
+  currentStatusId String? // status_id do Kommo — usado para detectar mudança real de etapa (nomes podem se repetir)
+  kommoLeadId    String?
+  kommoContactId String?
+
+  // Enriquecimento do anúncio (via Graph API, usando adSourceId) — requer que
+  // a conta de anúncio esteja atribuída ao mesmo system user do META_CAPI_TOKEN.
+  campaignId     String?
+  campaignName   String?
+  adsetId        String?
+  adsetName      String?
+  creativeId     String?
+  creativeName   String?
+
+  firstContactAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  timeline    TimelineEvent[]
+  queueJobs   EventQueueJob[]
+
+  @@index([ctwaClid])
+  @@index([kommoLeadId])
+}
+
+// Histórico cronológico de tudo que aconteceu com um lead: entrada via anúncio,
+// mudanças de etapa no Kommo, envios à CAPI e tentativas de retry.
+model TimelineEvent {
+  id          String   @id @default(cuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type        String   // contact_in | stage_change | capi_event | retry | info
+  status      String   // success | failure | skipped | info
+  title       String
+  description String?
+  payload     String?  // JSON serializado (payload enviado, quando aplicável)
+  response    String?  // JSON serializado (resposta recebida, quando aplicável)
+  createdAt   DateTime @default(now())
+
+  @@index([leadId])
+  @@index([type])
+  @@index([status])
+}
+
+// Mapa configurável ETAPA_DO_KOMMO -> EVENTO_META, editável pelo painel.
+//
+// A chave de casamento é (pipelineId, statusId) — IDs do Kommo, sempre únicos —
+// e NÃO o nome da etapa: contas Kommo podem ter duas etapas com o mesmo nome
+// (ex.: uma etapa intermediária "Venda Realizada" e o status final "Ganho" do
+// kanban, também chamado "Venda Realizada"), e casar por nome dispararia o
+// evento errado. `kommoStageName` é guardado só para exibição no painel.
+model EventMapping {
+  id             String   @id @default(cuid())
+  pipelineId     String
+  statusId       String
+  kommoStageName String
+  metaEvent      String
+  value          Float?
+  currency       String?  @default("BRL")
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([pipelineId, statusId])
+}
+
+// Fila de envio/retry para a Conversions API, persistida para sobreviver a restarts.
+model EventQueueJob {
+  id            String    @id @default(cuid())
+  leadId        String
+  lead          Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  eventName     String
+  eventId       String    // id determinístico usado para dedup na Meta
+  payload       String    // JSON do corpo enviado à CAPI
+  status        String    @default("pending") // pending | processing | success | failed
+  attempts      Int       @default(0)
+  maxAttempts   Int       @default(5)
+  nextAttemptAt DateTime  @default(now())
+  lastError     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status])
+  @@index([leadId])
+}
