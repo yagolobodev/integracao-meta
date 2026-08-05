@@ -19,6 +19,7 @@
  *   isOrganic: boolean,
  *   messageId: string|null,
  *   timestamp: string|null,
+ *   text: string|null,
  * }}
  *   Retorna null se o payload não contiver uma mensagem de entrada (ex.: webhook
  *   de status de mensagem, sem `messages`).
@@ -57,5 +58,6 @@ export function extractCtwaData(webhookBody) {
     isOrganic,
     messageId: message.id ?? null,
     timestamp: message.timestamp ?? null,
+    text: message.text?.body ?? null,
   };
 }

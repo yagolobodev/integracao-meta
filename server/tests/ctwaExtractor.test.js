@@ -53,6 +53,7 @@ describe('extractCtwaData', () => {
       isOrganic: false,
       messageId: 'wamid.TEST123',
       timestamp: '1735900000',
+      text: 'Oi',
     });
   });
 

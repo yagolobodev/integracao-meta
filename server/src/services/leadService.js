@@ -40,7 +40,7 @@ async function enrichAdDetails(lead, adSourceId) {
  * quando houver ctwa_clid, dispara a sincronização assíncrona com o Kommo.
  */
 export async function handleIncomingMessage(extracted) {
-  const { phone, ctwaClid, adSourceId, dedupToken, isOrganic } = extracted;
+  const { phone, ctwaClid, adSourceId, dedupToken, isOrganic, text } = extracted;
 
   let lead = await leadRepository.findLeadByPhone(phone);
   let isNewLead = false;
@@ -64,6 +64,10 @@ export async function handleIncomingMessage(extracted) {
     });
   }
 
+  const attributionNote = isOrganic
+    ? 'context.ad ausente no payload — não será reportado à CAPI.'
+    : `ad_source_id=${adSourceId ?? 'desconhecido'}`;
+
   await addTimelineEvent({
     leadId: lead.id,
     type: 'contact_in',
@@ -71,9 +75,7 @@ export async function handleIncomingMessage(extracted) {
     title: isOrganic
       ? 'Contato orgânico (sem anúncio identificado)'
       : 'Contato via anúncio Click-to-WhatsApp',
-    description: isOrganic
-      ? 'context.ad ausente no payload — não será reportado à CAPI.'
-      : `ad_source_id=${adSourceId ?? 'desconhecido'}`,
+    description: text ? `${attributionNote} Mensagem: "${text}"` : attributionNote,
     payload: extracted,
   });
 
