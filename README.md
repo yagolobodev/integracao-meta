@@ -6,6 +6,10 @@ Middleware de rastreamento entre o **WhatsApp Cloud API (Meta)**, o **CRM Kommo*
 Kommo, e dispara eventos de conversão para a Meta conforme o lead avança no funil —
 com um painel web mostrando o histórico completo de cada lead em tempo real.
 
+**Produção:** https://institutolife.moovodonto.com.br — deploy automático via
+GitHub Actions a cada push na branch `main` (ver `.github/workflows/deploy.yml`
+e `deploy.sh` no servidor).
+
 ## Arquitetura
 
 ```
