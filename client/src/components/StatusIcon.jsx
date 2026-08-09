@@ -3,6 +3,7 @@ const STATUS_STYLES = {
   failure: { dot: 'bg-red-500', ring: 'ring-red-500/30', text: 'text-red-400' },
   skipped: { dot: 'bg-slate-500', ring: 'ring-slate-500/30', text: 'text-slate-400' },
   info: { dot: 'bg-sky-500', ring: 'ring-sky-500/30', text: 'text-sky-400' },
+  warning: { dot: 'bg-amber-500', ring: 'ring-amber-500/30', text: 'text-amber-400' },
 };
 
 export function statusStyle(status) {

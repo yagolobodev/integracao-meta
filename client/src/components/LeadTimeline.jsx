@@ -30,6 +30,9 @@ export default function LeadTimeline({ leadId, onClose, refreshKey }) {
           <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
             <span>
               ctwa_clid: <MaskedClid clid={lead.ctwaClid} />
+              {!lead.ctwaClid && (
+                <span className="ml-1 text-slate-600">(contato orgânico — sem atribuição de anúncio)</span>
+              )}
             </span>
             <span>ad_source_id: {lead.adSourceId ?? '—'}</span>
             <span>etapa: {lead.currentStage ?? 'sem etapa'}</span>

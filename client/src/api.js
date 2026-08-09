@@ -35,4 +35,9 @@ export const api = {
   deleteEventMapping: (id) => request(`/event-mappings/${id}`, { method: 'DELETE' }),
   sendTestEvent: (payload) =>
     request('/test-events/send', { method: 'POST', body: JSON.stringify(payload) }),
+  getDashboardSummary: (params = {}) => request(`/dashboard/summary?${new URLSearchParams(params)}`),
+  getDashboardLeadsTimeseries: (params = {}) =>
+    request(`/dashboard/leads-timeseries?${new URLSearchParams(params)}`),
+  getDashboardFunnel: (params = {}) => request(`/dashboard/funnel?${new URLSearchParams(params)}`),
+  getDashboardCampaigns: (params = {}) => request(`/dashboard/campaigns?${new URLSearchParams(params)}`),
 };

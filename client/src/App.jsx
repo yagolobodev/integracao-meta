@@ -6,11 +6,12 @@ import LeadsList from './components/LeadsList.jsx';
 import LeadTimeline from './components/LeadTimeline.jsx';
 import LogsFeed from './components/LogsFeed.jsx';
 import Diagnostics from './components/Diagnostics.jsx';
+import Dashboard from './components/dashboard/Dashboard.jsx';
 
 const EMPTY_FILTERS = { search: '', status: '', type: '', from: '', to: '' };
 
 export default function App() {
-  const [tab, setTab] = useState('logs');
+  const [tab, setTab] = useState('dashboard');
   const [metrics, setMetrics] = useState(null);
   const [leads, setLeads] = useState([]);
   const [events, setEvents] = useState([]);
@@ -74,6 +75,7 @@ export default function App() {
             </span>
             <nav className="flex gap-1 rounded-lg bg-slate-900 p-1">
               {[
+                { id: 'dashboard', label: 'Dashboard' },
                 { id: 'logs', label: 'Logs' },
                 { id: 'diagnostics', label: 'Diagnóstico' },
               ].map((t) => (
@@ -93,7 +95,9 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-7xl space-y-4 p-6">
-        {tab === 'logs' ? (
+        {tab === 'dashboard' ? (
+          <Dashboard />
+        ) : tab === 'logs' ? (
           <>
             <MetricsCards metrics={metrics} />
             <Filters filters={filters} onChange={setFilters} />

@@ -1,27 +1,30 @@
 import { useState } from 'react';
-import StatusIcon, { statusStyle } from './StatusIcon.jsx';
-import { formatDateTime, TYPE_LABELS } from '../utils.js';
+import EventIcon from './EventIcon.jsx';
+import { statusStyle } from './StatusIcon.jsx';
+import { getEventPresentation } from '../eventPresentation.js';
+import { formatDateTime, formatRelativeTime } from '../utils.js';
 
 export default function TimelineEntry({ event, leadLabel, onClick }) {
   const [open, setOpen] = useState(false);
   const hasDetails = event.payload || event.response;
-  const style = statusStyle(event.status);
+  const presentation = getEventPresentation(event);
+  const style = statusStyle(presentation.tone);
 
   return (
     <li
-      className={`relative pb-6 pl-8 ${onClick ? 'cursor-pointer' : ''}`}
+      className={`relative pb-6 pl-9 ${onClick ? 'cursor-pointer' : ''}`}
       onClick={onClick}
     >
-      <span className="absolute left-[5px] top-1 h-full w-px bg-slate-800" aria-hidden="true" />
-      <span className="absolute left-0 top-1">
-        <StatusIcon status={event.status} />
+      <span className="absolute left-3 top-1 h-full w-px bg-slate-800" aria-hidden="true" />
+      <span className="absolute left-0 top-0">
+        <EventIcon name={presentation.icon} tone={presentation.tone} />
       </span>
 
       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-        <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wide">
-          {TYPE_LABELS[event.type] ?? event.type}
+        <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">
+          {presentation.label}
         </span>
-        <span>{formatDateTime(event.createdAt)}</span>
+        <span title={formatDateTime(event.createdAt)}>{formatRelativeTime(event.createdAt)}</span>
         {leadLabel && <span className="text-slate-400">· {leadLabel}</span>}
       </div>
 

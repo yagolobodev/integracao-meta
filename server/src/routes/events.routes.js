@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../db/prisma.js';
+import { parseDateRange } from '../lib/dateRange.js';
 
 export const eventsRouter = Router();
 
@@ -12,11 +13,8 @@ eventsRouter.get('/', async (req, res, next) => {
     const where = {};
     if (status) where.status = status;
     if (type) where.type = type;
-    if (from || to) {
-      where.createdAt = {};
-      if (from) where.createdAt.gte = new Date(from);
-      if (to) where.createdAt.lte = new Date(to);
-    }
+    const range = parseDateRange({ from, to });
+    if (range) where.createdAt = range;
     if (search) {
       where.lead = {
         OR: [
