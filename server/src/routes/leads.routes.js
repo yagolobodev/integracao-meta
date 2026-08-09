@@ -2,7 +2,7 @@ import { Router } from 'express';
 import * as leadRepository from '../repositories/leadRepository.js';
 import { addTimelineEvent, listTimelineForLead } from '../repositories/timelineRepository.js';
 import { prisma } from '../db/prisma.js';
-import { findContactByPhone } from '../services/kommoService.js';
+import { findContactByPhone, getLead, getStatusName } from '../services/kommoService.js';
 import { logger } from '../lib/logger.js';
 
 export const leadsRouter = Router();
@@ -36,45 +36,71 @@ leadsRouter.get('/:id', async (req, res, next) => {
 });
 
 /**
- * Backfill único: vincula leads locais já existentes (kommoLeadId nulo) a
- * leads já existentes no Kommo, buscando por telefone. Não cria leads novos
- * no Kommo — só liga o que já existe lá, pra habilitar o rastreamento de
- * mudança de etapa em leads capturados antes desse recurso existir.
+ * Backfill único: vincula leads locais a leads já existentes no Kommo
+ * (buscando por telefone, sem criar duplicados) e grava a etapa atual real
+ * de cada um — necessário porque leads já vinculados antes desse recurso
+ * existir nunca vão receber um webhook de "mudança" de etapa retroativo.
+ * Idempotente: pode ser chamado de novo sem duplicar vínculos ou timeline.
  */
 leadsRouter.post('/backfill-kommo-links', async (req, res, next) => {
   try {
     const leads = await leadRepository.listLeads({});
-    const unlinked = leads.filter((lead) => !lead.kommoLeadId);
 
-    const results = { total: unlinked.length, linked: 0, notFound: 0, failed: 0 };
+    const results = { total: leads.length, linked: 0, stageUpdated: 0, notFound: 0, failed: 0 };
 
-    for (const lead of unlinked) {
+    for (const lead of leads) {
       try {
-        const contact = await findContactByPhone(lead.phone);
-        const kommoLeadId = contact?._embedded?.leads?.[0]?.id ?? null;
-        const kommoContactId = contact?.id ?? null;
+        let { kommoLeadId, kommoContactId } = lead;
 
         if (!kommoLeadId) {
-          results.notFound += 1;
-          continue;
+          const contact = await findContactByPhone(lead.phone);
+          kommoLeadId = contact?._embedded?.leads?.[0]?.id ?? null;
+          kommoContactId = contact?.id ?? null;
+
+          if (!kommoLeadId) {
+            results.notFound += 1;
+            continue;
+          }
+
+          await leadRepository.updateLead(lead.id, {
+            kommoLeadId: String(kommoLeadId),
+            kommoContactId: kommoContactId ? String(kommoContactId) : null,
+          });
+
+          await addTimelineEvent({
+            leadId: lead.id,
+            type: 'info',
+            status: 'success',
+            title: 'Lead vinculado retroativamente ao Kommo (backfill)',
+            description: `kommo_lead_id=${kommoLeadId}`,
+          });
+
+          results.linked += 1;
         }
 
+        if (lead.currentStage) continue;
+
+        const kommoLead = await getLead(kommoLeadId);
+        if (!kommoLead?.pipeline_id || !kommoLead?.status_id) continue;
+
+        const statusName = await getStatusName(kommoLead.pipeline_id, kommoLead.status_id);
+
         await leadRepository.updateLead(lead.id, {
-          kommoLeadId: String(kommoLeadId),
-          kommoContactId: kommoContactId ? String(kommoContactId) : null,
+          currentStage: statusName,
+          currentStatusId: String(kommoLead.status_id),
         });
 
         await addTimelineEvent({
           leadId: lead.id,
-          type: 'info',
-          status: 'success',
-          title: 'Lead vinculado retroativamente ao Kommo (backfill)',
-          description: `kommo_lead_id=${kommoLeadId}`,
+          type: 'stage_change',
+          status: 'info',
+          title: `Etapa atual (backfill): "${statusName}"`,
+          description: `pipeline_id=${kommoLead.pipeline_id} status_id=${kommoLead.status_id}`,
         });
 
-        results.linked += 1;
+        results.stageUpdated += 1;
       } catch (error) {
-        logger.error('Falha ao vincular lead ao Kommo (backfill)', {
+        logger.error('Falha ao vincular/atualizar etapa do lead no Kommo (backfill)', {
           leadId: lead.id,
           error: error.message,
         });
