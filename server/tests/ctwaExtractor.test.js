@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { extractCtwaData } from '../src/services/ctwaExtractor.js';
 
-function buildPayload({ withAd = true, withConversion = true } = {}) {
+function buildPayload({ withReferral = true } = {}) {
   return {
     object: 'whatsapp_business_account',
     entry: [
@@ -19,17 +19,19 @@ function buildPayload({ withAd = true, withConversion = true } = {}) {
                   timestamp: '1735900000',
                   type: 'text',
                   text: { body: 'Oi' },
-                  context: {
-                    ...(withAd
-                      ? {
-                          ad: {
-                            ctwa: { clid: 'AbCdEfGhIjKlMnOp' },
-                            source: { id: '1234567890', type: 'ad' },
-                          },
-                        }
-                      : {}),
-                    ...(withConversion ? { conversion: { data: 'dedup-token-xyz' } } : {}),
-                  },
+                  ...(withReferral
+                    ? {
+                        referral: {
+                          source_url: 'https://fb.me/ad',
+                          source_id: '1234567890',
+                          source_type: 'ad',
+                          headline: 'Título do anúncio',
+                          body: 'Descrição do anúncio',
+                          media_type: 'image',
+                          ctwa_clid: 'AbCdEfGhIjKlMnOp',
+                        },
+                      }
+                    : {}),
                 },
               ],
             },
@@ -42,14 +44,14 @@ function buildPayload({ withAd = true, withConversion = true } = {}) {
 }
 
 describe('extractCtwaData', () => {
-  it('extrai ctwa_clid, ad_source_id, dedup_token e telefone de uma mensagem via anúncio', () => {
+  it('extrai ctwa_clid, ad_source_id e telefone de uma mensagem via anúncio', () => {
     const result = extractCtwaData(buildPayload());
 
     expect(result).toEqual({
       phone: '5511999998888',
       ctwaClid: 'AbCdEfGhIjKlMnOp',
       adSourceId: '1234567890',
-      dedupToken: 'dedup-token-xyz',
+      dedupToken: null,
       isOrganic: false,
       messageId: 'wamid.TEST123',
       timestamp: '1735900000',
@@ -57,25 +59,12 @@ describe('extractCtwaData', () => {
     });
   });
 
-  it('marca o contato como orgânico quando context.ad está ausente', () => {
-    const result = extractCtwaData(buildPayload({ withAd: false }));
+  it('marca o contato como orgânico quando referral está ausente', () => {
+    const result = extractCtwaData(buildPayload({ withReferral: false }));
 
     expect(result.isOrganic).toBe(true);
     expect(result.ctwaClid).toBeNull();
     expect(result.adSourceId).toBeNull();
-  });
-
-  it('lida com ctwa como string simples (não objeto)', () => {
-    const payload = buildPayload();
-    payload.entry[0].changes[0].value.messages[0].context.ad.ctwa = 'PLAIN_CLID';
-
-    const result = extractCtwaData(payload);
-    expect(result.ctwaClid).toBe('PLAIN_CLID');
-  });
-
-  it('retorna dedupToken null quando conversion está ausente', () => {
-    const result = extractCtwaData(buildPayload({ withConversion: false }));
-    expect(result.dedupToken).toBeNull();
   });
 
   it('retorna null para webhooks sem mensagem de entrada (ex: status de leitura)', () => {

@@ -2,13 +2,13 @@
  * Extrai os dados de atribuição CTWA (Click-to-WhatsApp) da primeira mensagem
  * de um payload de webhook do WhatsApp Cloud API.
  *
- * Formato esperado (WhatsApp Cloud API):
- * entry[0].changes[0].value.messages[0].context.ad.ctwa      -> ctwa_clid
- * entry[0].changes[0].value.messages[0].context.ad.source.id -> ad_source_id (criativo)
- * entry[0].changes[0].value.messages[0].context.conversion.data -> dedup_token
+ * Formato real (WhatsApp Cloud API — mensagens originadas de anúncio trazem um
+ * objeto `referral` irmão de `context`, não aninhado dentro dele):
+ * entry[0].changes[0].value.messages[0].referral.ctwa_clid  -> ctwa_clid
+ * entry[0].changes[0].value.messages[0].referral.source_id  -> ad_source_id (criativo)
  * entry[0].changes[0].value.contacts[0].wa_id                -> telefone
  *
- * Se `context.ad` estiver ausente, o contato é considerado orgânico.
+ * Se `referral` estiver ausente, o contato é considerado orgânico.
  *
  * @param {object} webhookBody - corpo JSON já parseado do webhook.
  * @returns {null | {
@@ -33,28 +33,17 @@ export function extractCtwaData(webhookBody) {
   const phone = value.contacts?.[0]?.wa_id ?? message.from ?? null;
   if (!phone) return null;
 
-  const ad = message.context?.ad ?? null;
-  const isOrganic = !ad;
+  const referral = message.referral ?? null;
+  const isOrganic = !referral;
 
-  const rawCtwa = ad?.ctwa;
-  const ctwaClid =
-    typeof rawCtwa === 'string' ? rawCtwa : (rawCtwa?.clid ?? null);
-
-  const adSourceId = ad?.source?.id ?? null;
-
-  const conversionData = message.context?.conversion?.data ?? null;
-  const dedupToken =
-    typeof conversionData === 'string'
-      ? conversionData
-      : conversionData
-        ? JSON.stringify(conversionData)
-        : null;
+  const ctwaClid = referral?.ctwa_clid ?? null;
+  const adSourceId = referral?.source_id ?? null;
 
   return {
     phone,
     ctwaClid,
     adSourceId,
-    dedupToken,
+    dedupToken: null,
     isOrganic,
     messageId: message.id ?? null,
     timestamp: message.timestamp ?? null,
