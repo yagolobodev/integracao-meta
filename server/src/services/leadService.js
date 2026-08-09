@@ -79,8 +79,12 @@ export async function handleIncomingMessage(extracted) {
     payload: extracted,
   });
 
-  if (!isOrganic && ctwaClid && (isNewLead || !lead.kommoLeadId)) {
-    // Fire-and-forget: falha na sincronização com o Kommo não deve derrubar o webhook.
+  if (isNewLead || !lead.kommoLeadId) {
+    // Fire-and-forget: falha na sincronização com o Kommo não deve derrubar o
+    // webhook. Vincula/cria no Kommo todo lead (não só os de anúncio) para
+    // que mudanças de etapa sejam rastreadas mesmo sem ctwa_clid — o envio
+    // de evento à CAPI continua restrito a leads com ctwa_clid (obrigatório
+    // pela própria Meta), essa trava só afeta a vinculação/rastreamento.
     syncLeadToKommo(lead).catch((error) => {
       logger.error('Falha ao sincronizar lead com o Kommo', {
         leadId: lead.id,
