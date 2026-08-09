@@ -47,7 +47,7 @@ describe('extractCtwaData', () => {
   it('extrai ctwa_clid, ad_source_id e telefone de uma mensagem via anúncio', () => {
     const result = extractCtwaData(buildPayload());
 
-    expect(result).toMatchObject({
+    expect(result).toEqual({
       phone: '5511999998888',
       ctwaClid: 'AbCdEfGhIjKlMnOp',
       adSourceId: '1234567890',

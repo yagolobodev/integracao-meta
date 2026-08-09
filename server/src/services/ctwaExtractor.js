@@ -48,9 +48,5 @@ export function extractCtwaData(webhookBody) {
     messageId: message.id ?? null,
     timestamp: message.timestamp ?? null,
     text: message.text?.body ?? null,
-    // TEMP DEBUG (remover após confirmar o campo real do click id): referral
-    // bruto completo, pra descobrir onde a Meta está mandando o ctwa_clid
-    // já que source_id veio certo mas ctwa_clid não apareceu no objeto.
-    debugReferral: referral,
   };
 }

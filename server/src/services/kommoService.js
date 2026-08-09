@@ -43,11 +43,6 @@ export async function findContactByPhone(phone) {
   return data?._embedded?.contacts?.[0] ?? null;
 }
 
-/** Busca um lead do Kommo pelo id (pipeline_id/status_id atuais, entre outros). */
-export async function getLead(kommoLeadId) {
-  return kommoFetch(`/leads/${kommoLeadId}`);
-}
-
 /** Cria um contato + lead no Kommo já com o telefone preenchido. */
 export async function createContactWithLead(phone) {
   const payload = [
